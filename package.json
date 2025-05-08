@@ -1,7 +1,8 @@
 {
   "name": "carexpress-re",
-  "main": "expo-router/entry",
   "version": "1.0.0",
+  "main": "expo-router/entry",
+  "private": true,
   "scripts": {
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
@@ -24,6 +25,7 @@
     "crypto-browserify": "^3.12.1",
     "expo": "~53.0.8",
     "expo-blur": "~14.1.4",
+    "expo-build-properties": "~0.14.6",
     "expo-constants": "~17.1.6",
     "expo-file-system": "~18.1.9",
     "expo-font": "~13.3.1",
@@ -46,7 +48,6 @@
     "react": "19.0.0",
     "react-dom": "^19.0.0",
     "react-native": "0.79.2",
-    "react-native-async-storage": "^0.0.1",
     "react-native-gesture-handler": "~2.24.0",
     "react-native-maps": "1.20.1",
     "react-native-reanimated": "~3.17.4",
@@ -73,5 +74,11 @@
     "react-test-renderer": "^19.0.0",
     "typescript": "~5.8.3"
   },
-  "private": true
+  "expo": {
+    "doctor": {
+      "reactNativeDirectoryCheck": {
+        "listUnknownPackages": false
+      }
+    }
+  }
 }
