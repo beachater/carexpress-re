@@ -1,9 +1,9 @@
 # Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
 
-# Expo prebuild generated native code
-/android
-/ios
+# # Expo prebuild generated native code
+# /android
+# /ios
 
 # dependencies
 node_modules/
