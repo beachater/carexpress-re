@@ -1,23 +1,68 @@
+import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
   Animated,
   Image,
+  ScrollView,
+  StyleSheet,
+  Text,
   TouchableOpacity,
   TouchableWithoutFeedback,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { supabase } from '../../lib/supabase';
-import useNearestPharmacies from '../../hooks/useNearestPharmacies';
 import Background from '../../components/Background';
+import useNearestPharmacies from '../../hooks/useNearestPharmacies';
 
 export default function HomeScreen() {
   const router = useRouter();
-  const healthTip = '💡 Stay hydrated! Drink 8 glasses of water daily.';
+  const [healthTip, setHealthTip] = useState('');
+const slideAnim = useRef(new Animated.Value(50)).current; // start off-screen right
+const opacityAnim = useRef(new Animated.Value(0)).current;
+
+const tips = [
+  '💡 Stay hydrated! Drink 8 glasses of water daily.',
+  '🧘‍♀️ Take 10 minutes a day to relax and breathe deeply.',
+  '🥦 Eat green vegetables daily for essential vitamins.',
+  '🏃‍♂️ Walk at least 30 minutes a day to stay active.',
+  '😴 Get 7–9 hours of sleep every night.',
+];
+
+const animateTip = () => {
+  // Reset position and opacity
+  slideAnim.setValue(50);
+  opacityAnim.setValue(0);
+
+  // Animate in
+  Animated.parallel([
+    Animated.timing(slideAnim, {
+      toValue: 0,
+      duration: 500,
+      useNativeDriver: true,
+    }),
+    Animated.timing(opacityAnim, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true,
+    }),
+  ]).start();
+};
+
+useEffect(() => {
+  const shuffleTip = () => {
+    const randomIndex = Math.floor(Math.random() * tips.length);
+    setHealthTip(tips[randomIndex]);
+    animateTip(); // trigger animation
+  };
+
+  shuffleTip();
+
+  const intervalId = setInterval(shuffleTip, 8000); // every 8 seconds
+
+  return () => clearInterval(intervalId);
+}, []);
+
+
 
   const refillReminders = [
     { name: 'Metformin', daysLeft: 3 },
@@ -58,7 +103,18 @@ export default function HomeScreen() {
           {/* Health Tip */}
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>🩺 Health Tip</Text>
-            <Text style={styles.healthTip}>{healthTip}</Text>
+            <Animated.Text
+              style={[
+                styles.healthTip,
+                {
+                  transform: [{ translateX: slideAnim }],
+                  opacity: opacityAnim,
+                },
+              ]}
+            >
+              {healthTip}
+            </Animated.Text>
+
           </View>
 
           {/* Refill Reminders */}
@@ -95,7 +151,7 @@ export default function HomeScreen() {
               <Text style={styles.sectionTitle}>📍 Nearest Pharmacies</Text>
               {/* <TouchableOpacity onPress={() => router.push('/patient/pharmacy-list')}> */}
               <TouchableOpacity>
-                <Text style={styles.viewMoreBtn}>View More</Text>
+                {/* <Text style={styles.viewMoreBtn}>View More</Text> */}
               </TouchableOpacity>
             </View>
 

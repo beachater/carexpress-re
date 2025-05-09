@@ -1,21 +1,21 @@
+import Background from '@/components/Background';
+import { generatePrescriptionHTML } from '@/utility/generatePrescriptionHTML';
+import { Picker } from '@react-native-picker/picker';
 import { useEffect, useState } from 'react';
 import {
-  View,
+  Alert,
+  Button,
+  Modal,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
-  Button,
-  Alert,
-  StyleSheet,
-  ScrollView,
   TouchableOpacity,
-  Modal
+  View
 } from 'react-native';
-import { supabase } from '../../lib/supabase';
-import { Picker } from '@react-native-picker/picker';
-import Background from '@/components/Background';
 import uuid from 'react-native-uuid';
-import { generatePrescriptionHTML } from '@/utility/generatePrescriptionHTML';
 import { WebView } from 'react-native-webview';
+import { supabase } from '../../lib/supabase';
 
 
 type MedicineInput = {
@@ -37,24 +37,48 @@ export default function DoctorDashboard() {
   const prescriptionId = uuid.v4() as string;
 
   useEffect(() => {
-    const fetchData = async () => {
-      const { data: authUser } = await supabase.auth.getUser();
-      if (!authUser?.user) {
-        Alert.alert('Error', 'Could not fetch doctor user.');
-        return;
-      }
-      setDoctorId(authUser.user.id);
+  const fetchData = async () => {
+    const { data: authUser } = await supabase.auth.getUser();
+    if (!authUser?.user) {
+      Alert.alert('Error', 'Could not fetch doctor user.');
+      return;
+    }
 
-      const { data: patientsData, error } = await supabase
-        .from('profiles')
-        .select('id, full_name')
-        .eq('role', 'patient');
+    const doctorId = authUser.user.id;
+    setDoctorId(doctorId);
 
-      if (error) Alert.alert('Error', 'Could not fetch patients');
-      else setPatients(patientsData || []);
-    };
-    fetchData();
-  }, []);
+    const { data: linkedPatients, error: linkError } = await supabase
+      .from('doctor_patients')
+      .select('patient_id')
+      .eq('doctor_id', doctorId);
+
+    if (linkError) {
+      Alert.alert('Error', 'Could not fetch linked patients');
+      return;
+    }
+
+    const patientIds = linkedPatients?.map((entry) => entry.patient_id) || [];
+
+    if (patientIds.length === 0) {
+      setPatients([]); // doctor has no patients yet
+      return;
+    }
+
+    const { data: patientProfiles, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, full_name')
+      .in('id', patientIds);
+
+    if (profileError) {
+      Alert.alert('Error', 'Could not fetch patient profiles');
+    } else {
+      setPatients(patientProfiles || []);
+    }
+  };
+
+  fetchData();
+}, []);
+
 
   const handleChange = (index: number, field: keyof MedicineInput, value: string) => {
     const updated = [...medications];
@@ -201,9 +225,11 @@ export default function DoctorDashboard() {
 
         <TouchableOpacity onPress={addMedication}>
           <Text style={styles.addMore}>+ Add Another Medicine</Text>
+        </TouchableOpacity >
+        <TouchableOpacity style={styles.button} onPress={sendPrescription}>
+          <Text style={styles.buttonText}>Preview Prescription</Text>
         </TouchableOpacity>
 
-        <Button title="Preview Prescription" onPress={sendPrescription} />
 
         <Modal visible={showPreview} animationType="slide">
           <View style={{ flex: 1 }}>
@@ -275,5 +301,18 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginTop: 10,
     textAlign: 'right',
+  },
+  button: {
+    backgroundColor: '#15BE77',
+    paddingVertical: 16,
+    paddingHorizontal: 40,
+    borderRadius: 16,
+    width: '100%',
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 16,
   },
 });
