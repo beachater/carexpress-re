@@ -2,10 +2,9 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
+    "baseUrl": ".",                  // 👈 Required for `paths` to work
     "paths": {
-      "@/*": [
-        "./*"
-      ]
+      "@app/*": ["app/*"]            // 👈 Use @app prefix for app/ folder
     }
   },
   "include": [
