@@ -134,3 +134,7 @@ CareXpress Team
 📍 Cagayan de Oro, Philippines
 
 ---
+
+⚠️ Note: This repository is a reworked version of the original CareXpress codebase. The previous version encountered major SDK conflicts and went through dependency hell, prompting a clean rebuild for stability and scalability.
+
+
