@@ -1,50 +1,137 @@
-# Welcome to your Expo app 👋
+# CareXpress 🚑💊
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+CareXpress is a mobile application designed to provide fast, secure, and accessible prescription medicine delivery—especially for persons with disabilities, seniors, and solo-living individuals in the Philippines. The app connects patients, verified doctors, local pharmacies, and delivery drivers through a streamlined platform, ensuring prescription authenticity and on-time delivery with care.
 
-## Get started
+---
 
-1. Install dependencies
+## 📱 Features
+
+* **Role-based dashboards** for Patients, Doctors, Pharmacists, and Drivers.
+* **Doctor-verified prescription system** with secure upload and expiry tracking.
+* **Real-time order tracking and route optimization** using live location data.
+* **Digital prescription preview** and QR code scanning integration.
+* **Supabase backend integration** for authentication and database operations.
+* **Modern, clean UI** with React Native (Expo) and TypeScript.
+
+---
+
+## 📂 Project Structure
+
+```
+carexpress/
+├── app/
+│   ├── auth/                  # Login and registration screens
+│   ├── patient/               # Patient dashboard and order screens
+│   ├── doctor/                # Doctor dashboard and prescription tools
+│   ├── pharmacist/            # Pharmacy order management
+│   ├── driver/                # Delivery and routing interface
+│   ├── role-select/           # User role selection screen
+│   └── index.tsx             # Landing page
+├── assets/                   # Logos, icons, fonts, and UI images
+├── lib/
+│   └── supabase.ts           # Supabase client and configuration
+├── __tests__/                # Unit tests for critical components
+├── app.json                  # Expo configuration
+├── package.json              # Project metadata and dependencies
+├── tsconfig.json             # TypeScript configuration
+└── README.md
+```
+
+---
+
+## ⚙️ Setup Instructions
+
+1. **Clone the repository**
+
+   ```bash
+   git clone https://github.com/yourusername/carexpress.git
+   cd carexpress
+   ```
+
+2. **Install dependencies**
 
    ```bash
    npm install
    ```
 
-2. Start the app
+3. **Start the development server**
 
    ```bash
    npx expo start
    ```
 
-In the output, you'll find options to open the app in a
+4. **Run tests**
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+   ```bash
+   npm test
+   ```
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+---
 
-## Get a fresh project
+## 📦 Dependencies
 
-When you're ready, run:
+* **React Native (Expo)** – cross-platform mobile development
+* **Supabase** – backend as a service (authentication, database, storage)
+* **Expo Location** – for real-time GPS and mapping
+* **React Navigation** – routing and navigation
+* **TypeScript** – type-safe development
+* **Jest + Testing Library** – for unit testing
 
-```bash
-npm run reset-project
-```
+---
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## 🚀 Deployment Instructions (Optional for MVP)
 
-## Learn more
+### Option A: Expo Go (Development Preview)
 
-To learn more about developing your project with Expo, look at the following resources:
+1. Run `npx expo start`.
+2. Scan the QR code using the **Expo Go** app on your mobile device.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+### Option B: EAS Build
 
-## Join the community
+1. Install EAS CLI
 
-Join our community of developers creating universal apps.
+   ```bash
+   npm install -g eas-cli
+   ```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+2. Log in to Expo
+
+   ```bash
+   eas login
+   ```
+
+3. Configure build profile in `eas.json`
+
+4. Build the app
+
+   ```bash
+   eas build -p android
+   eas build -p ios
+   ```
+
+5. Submit to app stores with `eas submit`.
+
+---
+
+## 🛡️ Security & Authentication
+
+* Role-based access via Supabase Auth
+* Email/password login with session persistence
+* Encrypted digital prescription previews
+
+---
+
+## 📌 Notes
+
+* Doctor-only prescription uploads.
+* Patients can only order what is verified and valid.
+* Future features include real-time pharmacy inventory sync and delivery prioritization based on patient condition.
+
+---
+
+## 📬 Contact
+
+CareXpress Team
+📍 Cagayan de Oro, Philippines
+
+---
