@@ -44,8 +44,8 @@ carexpress/
 1. **Clone the repository**
 
    ```bash
-   git clone https://github.com/yourusername/carexpress.git
-   cd carexpress
+   git clone https://github.com/yourusername/carexpress-re.git
+   cd carexpress-re
    ```
 
 2. **Install dependencies**
