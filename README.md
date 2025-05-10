@@ -8,7 +8,6 @@ CareXpress is a mobile application designed to provide fast, secure, and accessi
 
 * **Role-based dashboards** for Patients, Doctors, Pharmacists, and Drivers.
 * **Doctor-verified prescription system** with secure upload and expiry tracking.
-* **Real-time order tracking and route optimization** using live location data.
 * **Digital prescription preview** and QR code scanning integration.
 * **Supabase backend integration** for authentication and database operations.
 * **Modern, clean UI** with React Native (Expo) and TypeScript.
