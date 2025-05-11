@@ -1,17 +1,17 @@
 import { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
+  ActivityIndicator,
+  Alert,
+  Dimensions,
   ScrollView,
   StyleSheet,
-  Alert,
+  Text,
   TouchableOpacity,
-  ActivityIndicator,
-  Dimensions,
+  View,
 } from 'react-native';
-import { supabase } from '../../lib/supabase';
-import Background from '../../components/Background';
 import { WebView } from 'react-native-webview';
+import Background from '../../components/Background';
+import { supabase } from '../../lib/supabase';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -38,7 +38,15 @@ export default function PatientPrescriptions() {
       if (error) {
         Alert.alert('Error', error.message);
       } else {
-        setPrescriptions(data || []);
+        if (data && data.length > 0) {
+          setPrescriptions(data);
+          setExpanded(data[0].id); // auto-expand the latest
+          if (data[0].image_url) {
+            loadHtml(data[0].id, data[0].image_url); // preload its HTML
+          }
+        } else {
+          setPrescriptions([]);
+        }
       }
 
       setLoading(false);

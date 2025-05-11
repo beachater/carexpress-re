@@ -1,16 +1,18 @@
+// UPDATED PHARMACY ORDERS SCREEN WITH URGENCY SORT + LABEL + BORDER
+
 import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Alert,
   ActivityIndicator,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { supabase } from '../../lib/supabase';
-import Background from '../../components/Background';
 import { WebView } from 'react-native-webview';
+import Background from '../../components/Background';
+import { supabase } from '../../lib/supabase';
 
 export default function PharmacyOrdersScreen() {
   const [orders, setOrders] = useState<any[]>([]);
@@ -36,6 +38,7 @@ export default function PharmacyOrdersScreen() {
           total,
           delivery_fee,
           created_at,
+          urgency,
           prescription_id,
           pharmacies ( name ),
           patient:patient_id ( full_name )
@@ -66,7 +69,10 @@ export default function PharmacyOrdersScreen() {
         prescription_url: imageMap[order.prescription_id] || null,
       }));
 
-      setOrders(ordersWithImages);
+      const urgencyOrder = { critical: 0, urgent: 1, standard: 2 };
+      const sortedOrders = ordersWithImages.sort((a, b) => urgencyOrder[a.urgency] - urgencyOrder[b.urgency]);
+
+      setOrders(sortedOrders);
     };
 
     fetchOrders();
@@ -123,11 +129,31 @@ export default function PharmacyOrdersScreen() {
         {orders.map((order) => {
           const isExpanded = expandedOrderId === order.id;
           const html = htmlContentMap[order.id];
+          const urgencyColor =
+            order.urgency === 'critical'
+              ? '#dc2626'
+              : order.urgency === 'urgent'
+              ? '#f97316'
+              : '#22c55e';
+
           return (
-            <View key={order.id} style={styles.card}>
+            <View
+              key={order.id}
+              style={[styles.card, { borderLeftWidth: 5, borderLeftColor: urgencyColor }]}
+            >
               <TouchableOpacity activeOpacity={0.8} onPress={() => toggleDetails(order.id, order.prescription_url)}>
                 <View style={styles.detailsSection}>
                   <Text style={styles.pharmacy}>{order.pharmacies?.name || 'Pharmacy'}</Text>
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      fontWeight: '700',
+                      color: urgencyColor,
+                      marginBottom: 4,
+                    }}
+                  >
+                    {order.urgency?.toUpperCase()}
+                  </Text>
                   <Text style={styles.patientName}>{order.patient?.full_name || 'Unknown'}</Text>
                   <Text style={styles.medicineLabel}>Medicine:</Text>
                   {order.medicine_data?.map((med: any, idx: number) => (
@@ -197,7 +223,7 @@ const styles = StyleSheet.create({
   pharmacy: {
     fontSize: 18,
     fontWeight: '700',
-    marginBottom: 4,
+    marginBottom: 2,
     color: '#222',
   },
   patientName: {

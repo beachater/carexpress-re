@@ -165,7 +165,7 @@ export default function DoctorDashboard() {
           .update({ image_url: publicURLData.publicUrl })
           .eq('prescription_id', prescriptionId);
 
-        Alert.alert('Success', 'Prescription saved and HTML uploaded.');
+        Alert.alert('Success', 'Prescription uploaded.');
         setPatientId('');
         setMedications([{ medicine_name: '', dosage: '', duration: '', instructions: '' }]);
         setShowPreview(false);
