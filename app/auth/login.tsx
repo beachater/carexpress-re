@@ -1,18 +1,18 @@
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
-  View,
+  Alert,
+  Image,
+  StyleSheet,
   Text,
   TextInput,
-  Image,
   TouchableOpacity,
-  StyleSheet,
-  Alert,
+  View,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Feather';
-import { signInWithEmail, supabase } from '@/lib/supabase';
 import Background from '../../components/Background';
+import { signInWithEmail, supabase } from '../../lib/supabase';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -56,7 +56,7 @@ export default function LoginScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.logoWrapper}>
           <Image
-              source={require('@/assets/images/carexpress-logo.png')}
+              source={require('../../assets/images/carexpress-logo.png')}
               style={styles.logo}
               resizeMode="contain"
           />

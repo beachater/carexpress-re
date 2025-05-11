@@ -3,6 +3,7 @@ export function generatePrescriptionHTML({
   age,
   date,
   medications,
+  doctorName,
 }: {
   patientName: string;
   age: string;
@@ -13,6 +14,7 @@ export function generatePrescriptionHTML({
     duration: string;
     instructions?: string;
   }[];
+  doctorName: string;
 }) {
   const medicationList = medications
     .map(
@@ -28,21 +30,27 @@ export function generatePrescriptionHTML({
   return `
     <html>
       <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
           body {
             font-family: Arial, sans-serif;
-            padding: 40px;
-            position: relative;
+            padding: 20px;
+            margin: 0 auto;
+            max-width: 500px;
+            background: #ffffff;
+            border: 1px solid #ddd;
+            border-radius: 10px;
           }
           .header {
             margin-bottom: 20px;
           }
           .rx-image {
-            width: 80px;
-            margin-top: 20px;
+            width: 60px;
+            margin: 20px 0;
+            display: block;
           }
           .medications {
-            margin-top: 30px;
+            margin-top: 20px;
           }
           .signature {
             margin-top: 60px;
@@ -50,6 +58,7 @@ export function generatePrescriptionHTML({
             width: 200px;
             text-align: right;
             float: right;
+            padding-top: 8px;
           }
         </style>
       </head>
@@ -60,14 +69,14 @@ export function generatePrescriptionHTML({
           <div><strong>Date:</strong> ${date}</div>
         </div>
 
-        <img src="https://gdudalmvhmcindbmmwox.supabase.co/storage/v1/object/public/prescriptions//rx-icon-6.png" class="rx-image" alt="Rx" />
+        <img src="https://gdudalmvhmcindbmmwox.supabase.co/storage/v1/object/public/prescriptions/rx-icon-6.png" class="rx-image" alt="Rx" />
 
         <div class="medications">
           ${medicationList}
         </div>
 
         <div class="signature">
-          <div>Doctor</div>
+          Dr. ${doctorName}
         </div>
       </body>
     </html>

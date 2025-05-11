@@ -1,10 +1,7 @@
-import Background from '@/components/Background';
-import { generatePrescriptionHTML } from '@/utility/generatePrescriptionHTML';
 import { Picker } from '@react-native-picker/picker';
 import { useEffect, useState } from 'react';
 import {
   Alert,
-  Button,
   Modal,
   ScrollView,
   StyleSheet,
@@ -15,8 +12,9 @@ import {
 } from 'react-native';
 import uuid from 'react-native-uuid';
 import { WebView } from 'react-native-webview';
+import Background from '../../components/Background';
 import { supabase } from '../../lib/supabase';
-
+import { generatePrescriptionHTML } from '../../utility/generatePrescriptionHTML';
 
 type MedicineInput = {
   medicine_name: string;
@@ -27,8 +25,9 @@ type MedicineInput = {
 
 export default function DoctorDashboard() {
   const [doctorId, setDoctorId] = useState<string | null>(null);
+  const [doctorName, setDoctorName] = useState('');
   const [patientId, setPatientId] = useState('');
-  const [patients, setPatients] = useState<{ id: string; full_name: string }[]>([]);
+  const [patients, setPatients] = useState<{ id: string; full_name: string; age?: number }[]>([]);
   const [medications, setMedications] = useState<MedicineInput[]>([
     { medicine_name: '', dosage: '', duration: '', instructions: '' },
   ]);
@@ -37,48 +36,55 @@ export default function DoctorDashboard() {
   const prescriptionId = uuid.v4() as string;
 
   useEffect(() => {
-  const fetchData = async () => {
-    const { data: authUser } = await supabase.auth.getUser();
-    if (!authUser?.user) {
-      Alert.alert('Error', 'Could not fetch doctor user.');
-      return;
-    }
+    const fetchData = async () => {
+      const { data: authUser } = await supabase.auth.getUser();
+      if (!authUser?.user) {
+        Alert.alert('Error', 'Could not fetch doctor user.');
+        return;
+      }
 
-    const doctorId = authUser.user.id;
-    setDoctorId(doctorId);
+      const doctorId = authUser.user.id;
+      setDoctorId(doctorId);
 
-    const { data: linkedPatients, error: linkError } = await supabase
-      .from('doctor_patients')
-      .select('patient_id')
-      .eq('doctor_id', doctorId);
+      const { data: doctorProfile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', doctorId)
+        .single();
 
-    if (linkError) {
-      Alert.alert('Error', 'Could not fetch linked patients');
-      return;
-    }
+      setDoctorName(doctorProfile?.full_name || '');
 
-    const patientIds = linkedPatients?.map((entry) => entry.patient_id) || [];
+      const { data: linkedPatients, error: linkError } = await supabase
+        .from('doctor_patients')
+        .select('patient_id')
+        .eq('doctor_id', doctorId);
 
-    if (patientIds.length === 0) {
-      setPatients([]); // doctor has no patients yet
-      return;
-    }
+      if (linkError) {
+        Alert.alert('Error', 'Could not fetch linked patients');
+        return;
+      }
 
-    const { data: patientProfiles, error: profileError } = await supabase
-      .from('profiles')
-      .select('id, full_name')
-      .in('id', patientIds);
+      const patientIds = linkedPatients?.map((entry) => entry.patient_id) || [];
 
-    if (profileError) {
-      Alert.alert('Error', 'Could not fetch patient profiles');
-    } else {
-      setPatients(patientProfiles || []);
-    }
-  };
+      if (patientIds.length === 0) {
+        setPatients([]);
+        return;
+      }
 
-  fetchData();
-}, []);
+      const { data: patientProfiles, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, full_name, age')
+        .in('id', patientIds);
 
+      if (profileError) {
+        Alert.alert('Error', 'Could not fetch patient profiles');
+      } else {
+        setPatients(patientProfiles || []);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const handleChange = (index: number, field: keyof MedicineInput, value: string) => {
     const updated = [...medications];
@@ -109,11 +115,14 @@ export default function DoctorDashboard() {
       return;
     }
 
+    const selectedPatient = patients.find((p) => p.id === patientId);
+
     const html = generatePrescriptionHTML({
-      patientName: patients.find((p) => p.id === patientId)?.full_name || 'Patient',
-      age: '—',
+      patientName: selectedPatient?.full_name || 'Patient',
+      age: selectedPatient?.age?.toString() || '—',
       date: new Date().toLocaleDateString(),
       medications,
+      doctorName: doctorName || 'Unknown',
     });
 
     setHtmlContent(html);
@@ -147,8 +156,7 @@ export default function DoctorDashboard() {
           return;
         }
 
-        const { data: publicURLData } = supabase
-          .storage
+        const { data: publicURLData } = supabase.storage
           .from('prescriptions')
           .getPublicUrl(fileName);
 
@@ -172,7 +180,7 @@ export default function DoctorDashboard() {
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.title}>👨‍⚕️ Doctor Dashboard</Text>
 
-        <Text style={styles.label}>Select Patient *</Text>
+        <Text style={styles.label}>Select Patient</Text>
         <View style={styles.pickerWrapper}>
           <Picker
             selectedValue={patientId}
@@ -225,17 +233,26 @@ export default function DoctorDashboard() {
 
         <TouchableOpacity onPress={addMedication}>
           <Text style={styles.addMore}>+ Add Another Medicine</Text>
-        </TouchableOpacity >
+        </TouchableOpacity>
+
         <TouchableOpacity style={styles.button} onPress={sendPrescription}>
           <Text style={styles.buttonText}>Preview Prescription</Text>
         </TouchableOpacity>
 
-
         <Modal visible={showPreview} animationType="slide">
-          <View style={{ flex: 1 }}>
-            <WebView originWhitelist={["*"]} source={{ html: htmlContent }} />
-            <Button title="Confirm and Upload" onPress={confirmUpload} />
-            <Button title="Cancel" onPress={() => setShowPreview(false)} color="grey" />
+          <View style={{ flex: 1, padding: 20, justifyContent: 'center' }}>
+            <View style={{ flex: 1, borderRadius: 12, overflow: 'hidden', marginBottom: 20 }}>
+              <WebView originWhitelist={['*']} source={{ html: htmlContent }} />
+            </View>
+            <TouchableOpacity style={styles.button} onPress={confirmUpload}>
+              <Text style={styles.buttonText}>Upload</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.button, { backgroundColor: '#999', marginTop: 10 }]}
+              onPress={() => setShowPreview(false)}
+            >
+              <Text style={styles.buttonText}>Cancel</Text>
+            </TouchableOpacity>
           </View>
         </Modal>
       </ScrollView>
