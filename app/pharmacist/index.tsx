@@ -199,7 +199,7 @@ export default function PharmacyOrdersScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 16, gap: 16 },
+  container: { padding: 16, gap: 16, paddingTop: 40 },
   title: { fontSize: 28, fontWeight: '700', marginBottom: 20 },
   card: {
     backgroundColor: '#fff',

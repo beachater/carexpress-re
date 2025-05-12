@@ -107,7 +107,7 @@ export default function HomeScreen() {
     <Background>
       <SafeAreaView style={{ flex: 1 }} edges={['left', 'right', 'bottom']}>
         <ScrollView contentContainerStyle={styles.container}>
-          <Text style={styles.header}>Find the{''}Care You Need</Text>
+          <Text style={styles.header}>Find the{' '}Care You Need</Text>
 
           {/* Medicine Search */}
           <View style={styles.card}>
