@@ -138,7 +138,7 @@ export default function OrdersScreen() {
       dLng: longitude.toString(),
     });
 
-    Alert.alert('Order Placed!', 'You can now track your delivery route.');
+    Alert.alert('Order Placed!', 'You can track your order now while its being processed', );
   };
 
   const handleTrack = () => {
