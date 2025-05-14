@@ -28,6 +28,7 @@ export default function OrdersScreen() {
   const [routeParams, setRouteParams] = useState(null);
   const [deliveryFee, setDeliveryFee] = useState(0);
   const [urgency, setUrgency] = useState('');
+  const [deliveryMethod, setDeliveryMethod] = useState<'pickup' | 'delivery' | ''>('');
   const [showSummary, setShowSummary] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const slideAnim = useState(new Animated.Value(300))[0];
@@ -56,8 +57,8 @@ export default function OrdersScreen() {
   }, []);
 
   useEffect(() => {
-    if (urgency) {
-      setDeliveryFee(baseCharge);
+    if ((deliveryMethod === 'pickup') || (deliveryMethod === 'delivery' && urgency)) {
+      setDeliveryFee(deliveryMethod === 'delivery' ? baseCharge : 0);
       setShowSummary(true);
       Animated.timing(slideAnim, {
         toValue: 0,
@@ -72,16 +73,20 @@ export default function OrdersScreen() {
         useNativeDriver: true,
       }).start();
     }
-  }, [urgency]);
+  }, [urgency, deliveryMethod]);
 
   const handleCheckout = async () => {
+    if (deliveryMethod === 'pickup') {
+      Alert.alert('Order Placed!', 'You will be notified if your medicine is ready pickup at the pharmacy.');
+      return;
+    }
+
     if (!location) {
       Alert.alert('Location not ready', error || 'Please wait and try again.');
       return;
     }
 
     const { latitude, longitude } = location;
-
     const { data: pharmacyData, error: pharmacyError } = await supabase
       .from('pharmacies')
       .select('latitude, longitude')
@@ -138,7 +143,7 @@ export default function OrdersScreen() {
       dLng: longitude.toString(),
     });
 
-    Alert.alert('Order Placed!', 'You can track your order now while its being processed', );
+    Alert.alert('Order Placed!', 'You can track your order now while its being processed');
   };
 
   const handleTrack = () => {
@@ -151,10 +156,8 @@ export default function OrdersScreen() {
 
     setTimeout(() => {
       setDeliveredModalVisible(true);
-    }, 10000); // 10 seconds
+    }, 10000);
   };
-
-  
 
   return (
     <Background>
@@ -162,12 +165,26 @@ export default function OrdersScreen() {
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <Text style={styles.header}>Order details</Text>
 
-          <Text style={styles.label}>Choose Delivery Speed</Text>
-          <TouchableOpacity style={styles.pickerWrapper} onPress={() => setModalVisible(true)}>
-            <Text style={{ padding: 12, fontSize: 14, color: '#111' }}>
-              {urgency ? deliveryOptions.find(o => o.value === urgency)?.label : '-- Select Option --'}
-            </Text>
-          </TouchableOpacity>
+          <Text style={styles.label}>Order Method</Text>
+          <View style={styles.pickerWrapper}>
+            <TouchableOpacity onPress={() => { setDeliveryMethod('pickup'); setUrgency(''); }}>
+              <Text style={{ padding: 12, fontSize: 14, color: deliveryMethod === 'pickup' ? '#22C55E' : '#111' }}>🏪 Pick Up</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setDeliveryMethod('delivery')}>
+              <Text style={{ padding: 12, fontSize: 14, color: deliveryMethod === 'delivery' ? '#22C55E' : '#111' }}>🚚 Delivery</Text>
+            </TouchableOpacity>
+          </View>
+
+          {deliveryMethod === 'delivery' && (
+            <>
+              <Text style={styles.label}>Choose Delivery Speed</Text>
+              <TouchableOpacity style={styles.pickerWrapper} onPress={() => setModalVisible(true)}>
+                <Text style={{ padding: 12, fontSize: 14, color: '#111' }}>
+                  {urgency ? deliveryOptions.find(o => o.value === urgency)?.label : '-- Select Option --'}
+                </Text>
+              </TouchableOpacity>
+            </>
+          )}
 
           <Modal visible={modalVisible} transparent animationType="slide">
             <View style={styles.modalOverlay}>
@@ -215,26 +232,6 @@ export default function OrdersScreen() {
               </View>
             ))
           )}
-          <Modal
-          visible={deliveredModalVisible}
-          transparent
-          animationType="fade"
-        >
-          <View style={styles.deliveredOverlay}>
-            <View style={styles.deliveredCard}>
-              {/* <Text style={styles.deliveredIcon}></Text> */}
-              <Text style={styles.deliveredTitle}>Delivered!</Text>
-              <Text style={styles.deliveredMsg}>Your medicine has been successfully delivered.</Text>
-              <TouchableOpacity
-                style={styles.deliveredBtn}
-                onPress={() => setDeliveredModalVisible(false)}
-              >
-                <Text style={styles.deliveredBtnText}>OK</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
-
         </ScrollView>
 
         {showSummary && (
@@ -260,6 +257,7 @@ export default function OrdersScreen() {
     </Background>
   );
 }
+
 
 // append styles: label, pickerWrapper, summaryBox (already there)
 
