@@ -38,16 +38,16 @@ export default function LoginScreen() {
 
     switch (profile.role) {
       case 'doctor':
-        router.replace('/doctor');
+        router.replace('../doctor');
         break;
       case 'pharmacist':
-        router.replace('/pharmacist');
+        router.replace('../pharmacist');
         break;
       case 'driver':
-        router.replace('/driver');
+        router.replace('../driver');
         break;
       default:
-        router.replace('/patient');
+        router.replace('../patient');
     }
   };
 

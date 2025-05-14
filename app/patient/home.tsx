@@ -31,6 +31,9 @@ export default function HomeScreen() {
   const { nearestPharmacies, loading, error } = useNearestPharmacies();
   const scaleRefs = useRef<Animated.Value[]>([]);
   const [showOverlay, setShowOverlay] = useState(false);
+  const [allMedicineNames, setAllMedicineNames] = useState<string[]>([]);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+
 
   const tips = [
     '💡 Stay hydrated! Drink 8 glasses of water daily.',
@@ -115,11 +118,44 @@ export default function HomeScreen() {
             <TextInput
               placeholder="What do you want to order?"
               value={searchQuery}
-              onChangeText={setSearchQuery}
+              onChangeText={async (text) => {
+                setSearchQuery(text);
+
+                if (allMedicineNames.length === 0) {
+                  const { data: meds } = await supabase.from('medicines').select('name');
+                  const uniqueNames = Array.from(new Set(meds?.map((m) => m.name)));
+                  setAllMedicineNames(uniqueNames);
+                }
+
+                const filtered = allMedicineNames.filter((name) =>
+                  name.toLowerCase().includes(text.toLowerCase())
+                );
+                setSuggestions(filtered.slice(0, 5)); // top 5 suggestions
+              }}
+
               onSubmitEditing={handleSearchMedicine}
               style={styles.searchInput}
               returnKeyType="search"
             />
+
+            {searchQuery.length > 0 && suggestions.length > 0 && (
+            <View style={{ marginTop: 6, backgroundColor: '#fff', borderRadius: 10, elevation: 3 }}>
+              {suggestions.map((suggestion, idx) => (
+                <TouchableOpacity
+                  key={idx}
+                  style={{ paddingVertical: 10, paddingHorizontal: 14 }}
+                  onPress={() => {
+                    setSearchQuery(suggestion);
+                    setSuggestions([]);
+                    handleSearchMedicine(); // trigger search
+                  }}
+                >
+                  <Text style={{ fontSize: 14 }}>{suggestion}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
             {searchQuery !== '' && noMatches && (
               <Text style={styles.detailText}>No pharmacies found for that medicine.</Text>
             )}

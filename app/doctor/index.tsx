@@ -1,8 +1,10 @@
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 import { useEffect, useState } from 'react';
 import {
   Alert,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -15,6 +17,7 @@ import { WebView } from 'react-native-webview';
 import Background from '../../components/Background';
 import { supabase } from '../../lib/supabase';
 import { generatePrescriptionHTML } from '../../utility/generatePrescriptionHTML';
+
 
 type MedicineInput = {
   medicine_name: string;
@@ -33,6 +36,8 @@ export default function DoctorDashboard() {
   ]);
   const [showPreview, setShowPreview] = useState(false);
   const [htmlContent, setHtmlContent] = useState('');
+  const [showDatePickerIndex, setShowDatePickerIndex] = useState<number | null>(null);
+
   const prescriptionId = uuid.v4() as string;
 
   useEffect(() => {
@@ -173,6 +178,8 @@ export default function DoctorDashboard() {
         Alert.alert('Upload Error', uploadErr.message);
       }
     }
+
+    
   };
 
   return (
@@ -195,41 +202,68 @@ export default function DoctorDashboard() {
         </View>
 
         {medications.map((med, index) => (
-          <View key={index} style={styles.medCard}>
-            <Text style={styles.label}>Medicine #{index + 1}</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Medicine Name"
-              value={med.medicine_name}
-              onChangeText={(val) => handleChange(index, 'medicine_name', val)}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Dosage"
-              value={med.dosage}
-              onChangeText={(val) => handleChange(index, 'dosage', val)}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Duration"
-              value={med.duration}
-              onChangeText={(val) => handleChange(index, 'duration', val)}
-            />
-            <TextInput
-              style={[styles.input, { height: 60 }]}
-              placeholder="Instructions (optional)"
-              value={med.instructions}
-              onChangeText={(val) => handleChange(index, 'instructions', val)}
-              multiline
-            />
+  <View key={index} style={styles.medCard}>
+    <Text style={styles.label}>Medicine #{index + 1}</Text>
 
-            {medications.length > 1 && (
-              <TouchableOpacity onPress={() => removeMedication(index)}>
-                <Text style={styles.removeBtn}>Remove</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        ))}
+    <Text style={styles.label}>Name</Text>
+    <TextInput
+      style={styles.input}
+      placeholder="e.g. Paracetamol"
+      value={med.medicine_name}
+      onChangeText={(val) => handleChange(index, 'medicine_name', val)}
+    />
+
+    <Text style={styles.label}>Dosage</Text>
+    <TextInput
+      style={styles.input}
+      placeholder="e.g. 500mg"
+      value={med.dosage}
+      onChangeText={(val) => handleChange(index, 'dosage', val)}
+    />
+
+    <Text style={styles.label}>Duration (End Date)</Text>
+<TouchableOpacity
+  style={styles.input}
+  onPress={() => setShowDatePickerIndex(index)}
+>
+  <Text>
+    {med.duration
+      ? new Date(med.duration).toLocaleDateString()
+      : 'Select end date'}
+  </Text>
+</TouchableOpacity>
+
+{showDatePickerIndex === index && (
+  <DateTimePicker
+    value={med.duration ? new Date(med.duration) : new Date()}
+    mode="date"
+    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+    onChange={(_, selectedDate) => {
+      setShowDatePickerIndex(null); // Close after selection
+      if (selectedDate) {
+        handleChange(index, 'duration', selectedDate.toISOString());
+      }
+    }}
+  />
+)}
+
+    <Text style={styles.label}>Instructions</Text>
+    <TextInput
+      style={[styles.input, { height: 60 }]}
+      placeholder="Optional instructions"
+      value={med.instructions}
+      onChangeText={(val) => handleChange(index, 'instructions', val)}
+      multiline
+    />
+
+    {medications.length > 1 && (
+      <TouchableOpacity onPress={() => removeMedication(index)}>
+        <Text style={styles.removeBtn}>Remove</Text>
+      </TouchableOpacity>
+    )}
+  </View>
+))}
+
 
         <TouchableOpacity onPress={addMedication}>
           <Text style={styles.addMore}>+ Add Another Medicine</Text>
@@ -273,11 +307,13 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   label: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#000',
-    marginTop: 10,
-  },
+  fontSize: 13,
+  fontWeight: '600',
+  color: '#111', // Strong black
+  marginTop: 10,
+  marginBottom: 4,
+},
+
   input: {
     backgroundColor: '#f4f4f4',
     padding: 10,

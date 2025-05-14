@@ -1,6 +1,5 @@
-import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import Background from '../../components/Background';
+import { Tabs } from 'expo-router';
 
 export default function PatientTabsLayout() {
   return (
@@ -28,7 +27,12 @@ export default function PatientTabsLayout() {
           href: null, // hides it from tabs
         }}
       />
-
+<Tabs.Screen
+        name="offline-prescription"
+        options={{
+          href: null, // hides it from tabs
+        }}
+      />
 <Tabs.Screen
         name="track"
         options={{
