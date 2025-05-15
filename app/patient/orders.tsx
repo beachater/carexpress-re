@@ -1,76 +1,92 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Alert,
-} from 'react-native';
-import { useCart } from '../../context/CartContext';
-import Background from '../../components/Background';
 import { useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import {
+  Alert,
+  Animated,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import Background from '../../components/Background';
+import { useCart } from '../../context/CartContext';
 import useCurrentLocation from '../../hooks/useCurrentLocation';
 import { supabase } from '../../lib/supabase';
+
+const deliveryOptions = [
+  { label: '🚨 Express Now', value: 'critical' },
+  { label: '⚡ Fast (within 4 hours)', value: 'urgent' },
+  { label: '📦 Standard (today)', value: 'standard' },
+];
 
 export default function OrdersScreen() {
   const { cart, updateQuantity, removeItem } = useCart();
   const router = useRouter();
 
-  const [routeParams, setRouteParams] = useState<null | {
-    pLat: string;
-    pLng: string;
-    dLat: string;
-    dLng: string;
-  }>(null);
+  const [routeParams, setRouteParams] = useState(null);
   const [deliveryFee, setDeliveryFee] = useState(0);
-  const discount = 20;
+  const [urgency, setUrgency] = useState('');
+  const [deliveryMethod, setDeliveryMethod] = useState<'pickup' | 'delivery' | ''>('');
+  const [showSummary, setShowSummary] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const slideAnim = useState(new Animated.Value(300))[0];
+  const [deliveredModalVisible, setDeliveredModalVisible] = useState(false);
+  const [age, setAge] = useState(0);
+
+  const baseCharge = urgency === 'critical' ? 55 : urgency === 'urgent' ? 50 : urgency === 'standard' ? 40 : 0;
+  const discount = age >= 60 ? 20 : 0;
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const total = subtotal + deliveryFee - discount;
   const { location, error } = useCurrentLocation();
 
   useEffect(() => {
-    const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-      const toRad = (value: number) => (value * Math.PI) / 180;
-      const R = 6371;
-      const dLat = toRad(lat2 - lat1);
-      const dLon = toRad(lon2 - lon1);
-      const a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-        Math.sin(dLon / 2) * Math.sin(dLon / 2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      return R * c;
-    };
-
-    const updateDeliveryFee = async () => {
-      if (!location || cart.length === 0) return;
-      const { latitude, longitude } = location;
-
-      const { data: pharmacyData } = await supabase
-        .from('pharmacies')
-        .select('latitude, longitude')
-        .eq('id', cart[0].pharmacy_id)
-        .single();
-
-      if (pharmacyData) {
-        const dist = calculateDistance(latitude, longitude, pharmacyData.latitude, pharmacyData.longitude);
-        const fee = dist <= 4 ? 40 : 40 + Math.ceil(dist - 4) * 3;
-        setDeliveryFee(Math.round(fee));
+    const fetchAge = async () => {
+      const { data: userData } = await supabase.auth.getUser();
+      if (userData?.user?.id) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('age')
+          .eq('id', userData.user.id)
+          .single();
+        if (profile?.age) setAge(profile.age);
       }
     };
+    fetchAge();
+  }, []);
 
-    updateDeliveryFee();
-  }, [location, cart]);
+  useEffect(() => {
+    if ((deliveryMethod === 'pickup') || (deliveryMethod === 'delivery' && urgency)) {
+      setDeliveryFee(deliveryMethod === 'delivery' ? baseCharge : 0);
+      setShowSummary(true);
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      setShowSummary(false);
+      Animated.timing(slideAnim, {
+        toValue: 300,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [urgency, deliveryMethod]);
 
   const handleCheckout = async () => {
+    if (deliveryMethod === 'pickup') {
+      Alert.alert('Order Placed!', 'You will be notified if your medicine is ready pickup at the pharmacy.');
+      return;
+    }
+
     if (!location) {
       Alert.alert('Location not ready', error || 'Please wait and try again.');
       return;
     }
 
     const { latitude, longitude } = location;
-
     const { data: pharmacyData, error: pharmacyError } = await supabase
       .from('pharmacies')
       .select('latitude, longitude')
@@ -109,6 +125,7 @@ export default function OrdersScreen() {
         pharmacy_lng: pLng,
         total,
         delivery_fee: deliveryFee,
+        urgency,
         status: 'pending',
         prescription_id: latestPrescription?.prescription_id || null,
       },
@@ -126,7 +143,7 @@ export default function OrdersScreen() {
       dLng: longitude.toString(),
     });
 
-    Alert.alert('Order Placed!', 'You can now track your delivery route.');
+    Alert.alert('Order Placed!', 'You can track your order now while its being processed');
   };
 
   const handleTrack = () => {
@@ -135,10 +152,11 @@ export default function OrdersScreen() {
       return;
     }
 
-    router.push({
-      pathname: '/patient/track',
-      params: routeParams,
-    });
+    router.push({ pathname: '/patient/track', params: routeParams });
+
+    setTimeout(() => {
+      setDeliveredModalVisible(true);
+    }, 10000);
   };
 
   return (
@@ -146,6 +164,49 @@ export default function OrdersScreen() {
       <View style={styles.container}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <Text style={styles.header}>Order details</Text>
+
+          <Text style={styles.label}>Order Method</Text>
+          <View style={styles.pickerWrapper}>
+            <TouchableOpacity onPress={() => { setDeliveryMethod('pickup'); setUrgency(''); }}>
+              <Text style={{ padding: 12, fontSize: 14, color: deliveryMethod === 'pickup' ? '#22C55E' : '#111' }}>🏪 Pick Up</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setDeliveryMethod('delivery')}>
+              <Text style={{ padding: 12, fontSize: 14, color: deliveryMethod === 'delivery' ? '#22C55E' : '#111' }}>🚚 Delivery</Text>
+            </TouchableOpacity>
+          </View>
+
+          {deliveryMethod === 'delivery' && (
+            <>
+              <Text style={styles.label}>Choose Delivery Speed</Text>
+              <TouchableOpacity style={styles.pickerWrapper} onPress={() => setModalVisible(true)}>
+                <Text style={{ padding: 12, fontSize: 14, color: '#111' }}>
+                  {urgency ? deliveryOptions.find(o => o.value === urgency)?.label : '-- Select Option --'}
+                </Text>
+              </TouchableOpacity>
+            </>
+          )}
+
+          <Modal visible={modalVisible} transparent animationType="slide">
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalCard}>
+                {deliveryOptions.map(option => (
+                  <TouchableOpacity
+                    key={option.value}
+                    style={styles.modalItem}
+                    onPress={() => {
+                      setUrgency(option.value);
+                      setModalVisible(false);
+                    }}
+                  >
+                    <Text style={styles.modalText}>{option.label}</Text>
+                  </TouchableOpacity>
+                ))}
+                <TouchableOpacity onPress={() => setModalVisible(false)}>
+                  <Text style={{ color: '#EF4444', textAlign: 'center', marginTop: 12 }}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
 
           {cart.length === 0 ? (
             <View style={{ alignItems: 'center', marginTop: 40 }}>
@@ -162,26 +223,19 @@ export default function OrdersScreen() {
                   </View>
                   <Text style={styles.price}>₱{item.price}</Text>
                 </View>
-
                 <View style={styles.quantityRow}>
-                  <TouchableOpacity onPress={() => updateQuantity(item.name, -1)} style={styles.qtyButton}>
-                    <Text style={styles.qtyText}>–</Text>
-                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => updateQuantity(item.name, -1)} style={styles.qtyButton}><Text style={styles.qtyText}>–</Text></TouchableOpacity>
                   <Text style={styles.qtyText}>{item.quantity}</Text>
-                  <TouchableOpacity onPress={() => updateQuantity(item.name, 1)} style={styles.qtyButton}>
-                    <Text style={styles.qtyText}>+</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => removeItem(item.name)} style={styles.removeButton}>
-                    <Text style={styles.removeText}>🗑</Text>
-                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => updateQuantity(item.name, 1)} style={styles.qtyButton}><Text style={styles.qtyText}>+</Text></TouchableOpacity>
+                  <TouchableOpacity onPress={() => removeItem(item.name)} style={styles.removeButton}><Text style={styles.removeText}>🗑</Text></TouchableOpacity>
                 </View>
               </View>
             ))
           )}
         </ScrollView>
 
-        {cart.length > 0 && (
-          <View style={styles.summaryBox}>
+        {showSummary && (
+          <Animated.View style={[styles.summaryBox, { transform: [{ translateY: slideAnim }] }]}>
             <Text style={styles.summaryText}>Sub-Total <Text style={styles.alignRight}>₱{subtotal}</Text></Text>
             <Text style={styles.summaryText}>Delivery Charge <Text style={styles.alignRight}>₱{deliveryFee}</Text></Text>
             <Text style={styles.summaryText}>Discount <Text style={styles.alignRight}>₱{discount}</Text></Text>
@@ -197,12 +251,16 @@ export default function OrdersScreen() {
                 <Text style={styles.trackText}>Track Delivery</Text>
               </TouchableOpacity>
             )}
-          </View>
+          </Animated.View>
         )}
       </View>
     </Background>
   );
 }
+
+
+// append styles: label, pickerWrapper, summaryBox (already there)
+
 
 const styles = StyleSheet.create({
   container: {
@@ -326,4 +384,90 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 16,
   },
+  label: {
+  fontSize: 14,
+  fontWeight: '600',
+  color: '#111827',
+  marginBottom: 8,
+  // paddingHorizontal: 20,
+},
+pickerWrapper: {
+  backgroundColor: '#fff',
+  borderRadius: 12,
+  borderWidth: 1,
+  borderColor: '#D1D5DB',
+  // marginHorizontal: 20,
+  marginBottom: 16,
+},
+modalOverlay: {
+  flex: 1,
+  // backgroundColor: 'rgba(0,0,0,0.3)',
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+modalCard: {
+  backgroundColor: '#fff',
+  width: '80%',
+  padding: 20,
+  borderRadius: 16,
+  shadowColor: '#000',
+  shadowOpacity: 0.1,
+  shadowOffset: { width: 0, height: 4 },
+  shadowRadius: 8,
+  elevation: 5,
+},
+modalItem: {
+  paddingVertical: 12,
+},
+modalText: {
+  fontSize: 16,
+  textAlign: 'center',
+  color: '#111827',
+},
+deliveredOverlay: {
+  flex: 1,
+  backgroundColor: 'rgba(0,0,0,0.4)',
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+deliveredCard: {
+  backgroundColor: '#fff',
+  padding: 24,
+  borderRadius: 16,
+  width: '80%',
+  alignItems: 'center',
+  shadowColor: '#000',
+  shadowOpacity: 0.1,
+  shadowOffset: { width: 0, height: 3 },
+  shadowRadius: 8,
+  elevation: 5,
+},
+deliveredIcon: {
+  fontSize: 48,
+  marginBottom: 12,
+},
+deliveredTitle: {
+  fontSize: 20,
+  fontWeight: '700',
+  color: '#16a34a',
+  marginBottom: 6,
+},
+deliveredMsg: {
+  fontSize: 14,
+  textAlign: 'center',
+  color: '#444',
+  marginBottom: 16,
+},
+deliveredBtn: {
+  backgroundColor: '#16a34a',
+  paddingVertical: 10,
+  paddingHorizontal: 24,
+  borderRadius: 8,
+},
+deliveredBtnText: {
+  color: '#fff',
+  fontWeight: '600',
+  fontSize: 14,
+},
+
 });

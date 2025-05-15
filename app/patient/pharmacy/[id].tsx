@@ -1,23 +1,24 @@
+import { useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-  View,
+  Alert,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
-  StyleSheet,
-  ScrollView,
   TouchableOpacity,
-  Alert,
+  View,
 } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
-import { supabase } from '../../../lib/supabase';
-import { useCart } from '../../../context/CartContext';
 import Background from '../../../components/Background';
+import { useCart } from '../../../context/CartContext';
+import { supabase } from '../../../lib/supabase';
 
 type Medicine = {
   id: string;
   name: string;
   price: number;
   pharmacy_id: string;
+  description?: string;
 };
 
 export default function PharmacyDetails() {
@@ -28,6 +29,9 @@ export default function PharmacyDetails() {
   const [meds, setMeds] = useState<Medicine[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedMedicine, setSelectedMedicine] = useState<Medicine | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
+
 
   useEffect(() => {
     if (!id) return;
@@ -41,8 +45,9 @@ export default function PharmacyDetails() {
 
       const { data: medsData } = await supabase
         .from('medicines')
-        .select('id, name, price, pharmacy_id')
+        .select('id, name, price, pharmacy_id, description') // added description
         .eq('pharmacy_id', id);
+
 
       setPharmacy(pharmacyData);
       setMeds(medsData || []);
@@ -108,7 +113,14 @@ export default function PharmacyDetails() {
           <Text style={styles.detailText}>No medicines found.</Text>
         ) : (
           filteredMeds.map((med) => (
-            <View key={med.id} style={styles.medCard}>
+            <TouchableOpacity
+  key={med.id}
+  style={styles.medCard}
+  onPress={() => {
+    setSelectedMedicine(med);
+    setModalVisible(true);
+  }}
+>
               
               <View>
                 <Text style={styles.medName}>{med.name}</Text>
@@ -123,10 +135,58 @@ export default function PharmacyDetails() {
                   <Text style={styles.cartButtonText}>Add to Cart</Text>
                 </TouchableOpacity>
               </View>
-            </View>
+            </TouchableOpacity>
           ))
         )}
       </ScrollView>
+      {selectedMedicine && (
+  <View
+    style={{
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 20,
+    }}
+  >
+    <View
+      style={{
+        backgroundColor: '#fff',
+        borderRadius: 16,
+        padding: 20,
+        width: '100%',
+        maxWidth: 360,
+      }}
+    >
+      <Text style={{ fontSize: 18, fontWeight: '700', marginBottom: 8 }}>
+        {selectedMedicine.name}
+      </Text>
+      <Text style={{ fontSize: 14, marginBottom: 20 }}>
+        {selectedMedicine.description || 'No description available.'}
+      </Text>
+      <TouchableOpacity
+        style={{
+          alignSelf: 'flex-end',
+          backgroundColor: '#00C58E',
+          paddingHorizontal: 14,
+          paddingVertical: 8,
+          borderRadius: 8,
+        }}
+        onPress={() => {
+          setModalVisible(false);
+          setSelectedMedicine(null);
+        }}
+      >
+        <Text style={{ color: '#fff', fontWeight: '600' }}>Close</Text>
+      </TouchableOpacity>
+    </View>
+  </View>
+)}
+
     </Background>
   );
 }

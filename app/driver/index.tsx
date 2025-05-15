@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
-import { supabase } from '../../lib/supabase';
-import Background from '../../components/Background';
-import MapView, { Marker } from 'react-native-maps';
-import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
+import { useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { Alert, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import MapView, { Marker } from 'react-native-maps';
+import Background from '../../components/Background';
+import { supabase } from '../../lib/supabase';
 
 export default function DriverOrdersScreen() {
   const [orders, setOrders] = useState<any[]>([]);
@@ -30,6 +30,7 @@ export default function DriverOrdersScreen() {
           total,
           delivery_fee,
           created_at,
+          urgency,
           pharmacies (
             name,
             latitude,
@@ -46,9 +47,12 @@ export default function DriverOrdersScreen() {
         return;
       }
 
-      setOrders(data || []);
+      const urgencyOrder = { critical: 0, urgent: 1, standard: 2 };
+      const sortedOrders = (data || []).sort((a, b) => urgencyOrder[a.urgency] - urgencyOrder[b.urgency]);
 
-      for (const order of data || []) {
+      setOrders(sortedOrders);
+
+      for (const order of sortedOrders) {
         try {
           const geocode = await Location.reverseGeocodeAsync({
             latitude: parseFloat(order.delivery_lat),
@@ -106,20 +110,35 @@ export default function DriverOrdersScreen() {
 
         {orders.map((order) => {
           const isExpanded = expandedOrderId === order.id;
+          const urgencyColor =
+            order.urgency === 'critical'
+              ? '#dc2626'
+              : order.urgency === 'urgent'
+              ? '#f97316'
+              : '#22c55e';
+
           return (
-            <View key={order.id} style={styles.card}>
+            <View key={order.id} style={[styles.card, { borderLeftWidth: 5, borderLeftColor: urgencyColor }]}>
               <TouchableOpacity activeOpacity={0.8} onPress={() => toggleDetails(order.id)}>
                 <View style={styles.detailsSection}>
-                  <Text style={styles.pharmacy}>{order.pharmacies?.name || 'Pharmacy'}</Text>
-                  <Text style={styles.patientName}>{order.patient?.full_name || 'Unknown'}</Text>
-                  <Text style={styles.medicineLabel}>Medicine:</Text>
-                  {order.medicine_data?.map((med: any, idx: number) => (
-                    <Text key={idx} style={styles.medicineItem}>• {med.name} × {med.quantity}</Text>
-                  ))}
-                  <Text style={styles.info}>Date & Time: {new Date(order.created_at).toLocaleString()}</Text>
-                  <Text style={styles.info}>Delivery Fee: ₱{order.delivery_fee}</Text>
-                  <Text style={styles.info}>Location: {addressMap[order.id] || `${order.delivery_lat}, ${order.delivery_lng}`}</Text>
-                </View>
+                <Text style={styles.pharmacy}>{order.pharmacies?.name || 'Pharmacy'}</Text>
+  <Text style={{ fontSize: 13, fontWeight: '700', color: urgencyColor, marginBottom: 4 }}>
+    {order.urgency?.toUpperCase()}
+  </Text>
+  <Text style={styles.patientName}>{order.patient?.full_name || 'Unknown'}</Text>
+
+  <Text style={styles.info}>Purchase Cost: ₱{
+    order.medicine_data?.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0).toFixed(2)
+  }</Text>
+  <Text style={styles.info}>Delivery Fee: ₱{order.delivery_fee.toFixed(2)}</Text>
+  <Text style={styles.info}>Total: ₱{
+    (order.medicine_data?.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0) + order.delivery_fee).toFixed(2)
+  }</Text>
+
+  <Text style={styles.info}>Date & Time: {new Date(order.created_at).toLocaleString()}</Text>
+  <Text style={styles.info}>Location: {addressMap[order.id] || `${order.delivery_lat}, ${order.delivery_lng}`}</Text>
+            </View>
+
               </TouchableOpacity>
 
               {isExpanded && Platform.OS !== 'web' && order.pharmacies?.latitude && order.pharmacies?.longitude && (
@@ -176,7 +195,7 @@ export default function DriverOrdersScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 16, gap: 16 },
+  container: { padding: 16, gap: 16, paddingTop: 40 },
   title: { fontSize: 28, fontWeight: '700', marginBottom: 20 },
   card: {
     backgroundColor: '#fff',

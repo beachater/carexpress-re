@@ -1,7 +1,7 @@
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Background from '../../components/Background';
 
 
@@ -29,7 +29,7 @@ export default function RoleSelect() {
           <TouchableOpacity
             key={role.value}
             style={styles.buttonWrapper}
-            onPress={() => router.push({ pathname: '/auth', params: { role: role.value } })}
+            onPress={() => router.push({ pathname: '/auth/signup', params: { role: role.value } })}
           >
             <LinearGradient
               colors={['#53E88B', '#15BE77']}

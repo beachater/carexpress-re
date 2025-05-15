@@ -1,11 +1,10 @@
-import Background from '@/components/Background';
-import { generatePrescriptionHTML } from '@/utility/generatePrescriptionHTML';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 import { useEffect, useState } from 'react';
 import {
   Alert,
-  Button,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -15,7 +14,9 @@ import {
 } from 'react-native';
 import uuid from 'react-native-uuid';
 import { WebView } from 'react-native-webview';
+import Background from '../../components/Background';
 import { supabase } from '../../lib/supabase';
+import { generatePrescriptionHTML } from '../../utility/generatePrescriptionHTML';
 
 
 type MedicineInput = {
@@ -27,58 +28,68 @@ type MedicineInput = {
 
 export default function DoctorDashboard() {
   const [doctorId, setDoctorId] = useState<string | null>(null);
+  const [doctorName, setDoctorName] = useState('');
   const [patientId, setPatientId] = useState('');
-  const [patients, setPatients] = useState<{ id: string; full_name: string }[]>([]);
+  const [patients, setPatients] = useState<{ id: string; full_name: string; age?: number }[]>([]);
   const [medications, setMedications] = useState<MedicineInput[]>([
     { medicine_name: '', dosage: '', duration: '', instructions: '' },
   ]);
   const [showPreview, setShowPreview] = useState(false);
   const [htmlContent, setHtmlContent] = useState('');
+  const [showDatePickerIndex, setShowDatePickerIndex] = useState<number | null>(null);
+
   const prescriptionId = uuid.v4() as string;
 
   useEffect(() => {
-  const fetchData = async () => {
-    const { data: authUser } = await supabase.auth.getUser();
-    if (!authUser?.user) {
-      Alert.alert('Error', 'Could not fetch doctor user.');
-      return;
-    }
+    const fetchData = async () => {
+      const { data: authUser } = await supabase.auth.getUser();
+      if (!authUser?.user) {
+        Alert.alert('Error', 'Could not fetch doctor user.');
+        return;
+      }
 
-    const doctorId = authUser.user.id;
-    setDoctorId(doctorId);
+      const doctorId = authUser.user.id;
+      setDoctorId(doctorId);
 
-    const { data: linkedPatients, error: linkError } = await supabase
-      .from('doctor_patients')
-      .select('patient_id')
-      .eq('doctor_id', doctorId);
+      const { data: doctorProfile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', doctorId)
+        .single();
 
-    if (linkError) {
-      Alert.alert('Error', 'Could not fetch linked patients');
-      return;
-    }
+      setDoctorName(doctorProfile?.full_name || '');
 
-    const patientIds = linkedPatients?.map((entry) => entry.patient_id) || [];
+      const { data: linkedPatients, error: linkError } = await supabase
+        .from('doctor_patients')
+        .select('patient_id')
+        .eq('doctor_id', doctorId);
 
-    if (patientIds.length === 0) {
-      setPatients([]); // doctor has no patients yet
-      return;
-    }
+      if (linkError) {
+        Alert.alert('Error', 'Could not fetch linked patients');
+        return;
+      }
 
-    const { data: patientProfiles, error: profileError } = await supabase
-      .from('profiles')
-      .select('id, full_name')
-      .in('id', patientIds);
+      const patientIds = linkedPatients?.map((entry) => entry.patient_id) || [];
 
-    if (profileError) {
-      Alert.alert('Error', 'Could not fetch patient profiles');
-    } else {
-      setPatients(patientProfiles || []);
-    }
-  };
+      if (patientIds.length === 0) {
+        setPatients([]);
+        return;
+      }
 
-  fetchData();
-}, []);
+      const { data: patientProfiles, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, full_name, age')
+        .in('id', patientIds);
 
+      if (profileError) {
+        Alert.alert('Error', 'Could not fetch patient profiles');
+      } else {
+        setPatients(patientProfiles || []);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const handleChange = (index: number, field: keyof MedicineInput, value: string) => {
     const updated = [...medications];
@@ -109,11 +120,14 @@ export default function DoctorDashboard() {
       return;
     }
 
+    const selectedPatient = patients.find((p) => p.id === patientId);
+
     const html = generatePrescriptionHTML({
-      patientName: patients.find((p) => p.id === patientId)?.full_name || 'Patient',
-      age: '—',
+      patientName: selectedPatient?.full_name || 'Patient',
+      age: selectedPatient?.age?.toString() || '—',
       date: new Date().toLocaleDateString(),
       medications,
+      doctorName: doctorName || 'Unknown',
     });
 
     setHtmlContent(html);
@@ -147,8 +161,7 @@ export default function DoctorDashboard() {
           return;
         }
 
-        const { data: publicURLData } = supabase
-          .storage
+        const { data: publicURLData } = supabase.storage
           .from('prescriptions')
           .getPublicUrl(fileName);
 
@@ -157,7 +170,7 @@ export default function DoctorDashboard() {
           .update({ image_url: publicURLData.publicUrl })
           .eq('prescription_id', prescriptionId);
 
-        Alert.alert('Success', 'Prescription saved and HTML uploaded.');
+        Alert.alert('Success', 'Prescription uploaded.');
         setPatientId('');
         setMedications([{ medicine_name: '', dosage: '', duration: '', instructions: '' }]);
         setShowPreview(false);
@@ -165,6 +178,8 @@ export default function DoctorDashboard() {
         Alert.alert('Upload Error', uploadErr.message);
       }
     }
+
+    
   };
 
   return (
@@ -172,7 +187,7 @@ export default function DoctorDashboard() {
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.title}>👨‍⚕️ Doctor Dashboard</Text>
 
-        <Text style={styles.label}>Select Patient *</Text>
+        <Text style={styles.label}>Select Patient</Text>
         <View style={styles.pickerWrapper}>
           <Picker
             selectedValue={patientId}
@@ -187,55 +202,91 @@ export default function DoctorDashboard() {
         </View>
 
         {medications.map((med, index) => (
-          <View key={index} style={styles.medCard}>
-            <Text style={styles.label}>Medicine #{index + 1}</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Medicine Name"
-              value={med.medicine_name}
-              onChangeText={(val) => handleChange(index, 'medicine_name', val)}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Dosage"
-              value={med.dosage}
-              onChangeText={(val) => handleChange(index, 'dosage', val)}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Duration"
-              value={med.duration}
-              onChangeText={(val) => handleChange(index, 'duration', val)}
-            />
-            <TextInput
-              style={[styles.input, { height: 60 }]}
-              placeholder="Instructions (optional)"
-              value={med.instructions}
-              onChangeText={(val) => handleChange(index, 'instructions', val)}
-              multiline
-            />
+  <View key={index} style={styles.medCard}>
+    <Text style={styles.label}>Medicine #{index + 1}</Text>
 
-            {medications.length > 1 && (
-              <TouchableOpacity onPress={() => removeMedication(index)}>
-                <Text style={styles.removeBtn}>Remove</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        ))}
+    <Text style={styles.label}>Name</Text>
+    <TextInput
+      style={styles.input}
+      placeholder="e.g. Paracetamol"
+      value={med.medicine_name}
+      onChangeText={(val) => handleChange(index, 'medicine_name', val)}
+    />
+
+    <Text style={styles.label}>Dosage</Text>
+    <TextInput
+      style={styles.input}
+      placeholder="e.g. 500mg"
+      value={med.dosage}
+      onChangeText={(val) => handleChange(index, 'dosage', val)}
+    />
+
+    <Text style={styles.label}>Duration (End Date)</Text>
+<TouchableOpacity
+  style={styles.input}
+  onPress={() => setShowDatePickerIndex(index)}
+>
+  <Text>
+    {med.duration
+      ? new Date(med.duration).toLocaleDateString()
+      : 'Select end date'}
+  </Text>
+</TouchableOpacity>
+
+{showDatePickerIndex === index && (
+  <DateTimePicker
+    value={med.duration ? new Date(med.duration) : new Date()}
+    mode="date"
+    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+    onChange={(_, selectedDate) => {
+      setShowDatePickerIndex(null); // Close after selection
+      if (selectedDate) {
+        handleChange(index, 'duration', selectedDate.toISOString());
+      }
+    }}
+  />
+)}
+
+    <Text style={styles.label}>Instructions</Text>
+    <TextInput
+      style={[styles.input, { height: 60 }]}
+      placeholder="Optional instructions"
+      value={med.instructions}
+      onChangeText={(val) => handleChange(index, 'instructions', val)}
+      multiline
+    />
+
+    {medications.length > 1 && (
+      <TouchableOpacity onPress={() => removeMedication(index)}>
+        <Text style={styles.removeBtn}>Remove</Text>
+      </TouchableOpacity>
+    )}
+  </View>
+))}
+
 
         <TouchableOpacity onPress={addMedication}>
           <Text style={styles.addMore}>+ Add Another Medicine</Text>
-        </TouchableOpacity >
+        </TouchableOpacity>
+
         <TouchableOpacity style={styles.button} onPress={sendPrescription}>
           <Text style={styles.buttonText}>Preview Prescription</Text>
         </TouchableOpacity>
 
-
         <Modal visible={showPreview} animationType="slide">
-          <View style={{ flex: 1 }}>
-            <WebView originWhitelist={["*"]} source={{ html: htmlContent }} />
-            <Button title="Confirm and Upload" onPress={confirmUpload} />
-            <Button title="Cancel" onPress={() => setShowPreview(false)} color="grey" />
+          <View style={{ flex: 1, padding: 20, justifyContent: 'center' }}>
+            <View style={{ flex: 1, borderRadius: 12, overflow: 'hidden', marginBottom: 20 }}>
+              <WebView originWhitelist={['*']} source={{ html: htmlContent }} />
+            </View>
+            <TouchableOpacity style={styles.button} onPress={confirmUpload}>
+              <Text style={styles.buttonText}>Upload</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.button, { backgroundColor: '#999', marginTop: 10 }]}
+              onPress={() => setShowPreview(false)}
+            >
+              <Text style={styles.buttonText}>Cancel</Text>
+            </TouchableOpacity>
           </View>
         </Modal>
       </ScrollView>
@@ -256,11 +307,13 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   label: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#333',
-    marginTop: 10,
-  },
+  fontSize: 13,
+  fontWeight: '600',
+  color: '#111', // Strong black
+  marginTop: 10,
+  marginBottom: 4,
+},
+
   input: {
     backgroundColor: '#f4f4f4',
     padding: 10,
