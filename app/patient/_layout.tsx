@@ -76,6 +76,15 @@ export default function PatientTabsLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="chatbot"
+        options={{
+          tabBarLabel: 'Chat',
+          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
+            <Ionicons name="chatbubbles" color={color} size={size} />
+          ),
+        }}
+      />
       
     
       
